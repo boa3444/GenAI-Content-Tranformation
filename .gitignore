@@ -1,0 +1,42 @@
+# Python Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Large AI/ML files & datasets
+*.pkl
+*.h5
+*.pb
+*.onnx
+*.pt
+*.pth
+*.ckpt
+data/
+datasets/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+
+# Node.js dependencies
+node_modules/
+**/node_modules/
+
+# Next.js build output
+.next/
+**/.next/
+
+
+backend/.env
+.env
+
+
