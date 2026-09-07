@@ -28,32 +28,32 @@ export const RemotionPreview: React.FC<{ payload: RemotionPayload }> = ({ payloa
   return (
     <div className="space-y-6">
       {/* Top Header Card */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 rounded-2xl bg-white border border-gray-200 shadow-sm gap-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-5 rounded-3xl bg-[#F8F9FA] border border-gray-200 shadow-sm gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <Film className="w-5 h-5 text-blue-600" />
-            <h3 className="text-base font-bold text-gray-900">{title}</h3>
+          <div className="flex items-center gap-2.5">
+            <Film className="w-5 h-5 text-[#0A0A0A]" />
+            <h3 className="text-base font-bold text-[#0A0A0A] tracking-tight">{title}</h3>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            Target Duration: <span className="text-blue-700 font-mono font-semibold">{totalDuration}s</span> | Resolution:{" "}
-            <span className="text-blue-700 font-mono font-semibold">
+            Target Duration: <span className="text-[#0A0A0A] font-mono font-semibold">{totalDuration}s</span> | Resolution:{" "}
+            <span className="text-[#0A0A0A] font-mono font-semibold">
               {safePayload.remotion_props?.width || 1920}x{safePayload.remotion_props?.height || 1080}
             </span>{" "}
-            @ <span className="text-blue-700 font-mono font-semibold">{fps}fps</span>
+            @ <span className="text-[#0A0A0A] font-mono font-semibold">{fps}fps</span>
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => alert("MP4 Rendering started in the background!")}
-            className="px-3.5 py-1.5 rounded-xl bg-blue-600 text-white font-semibold text-xs hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-sm"
+            className="px-4 py-2 rounded-2xl bg-[#0A0A0A] text-white font-bold text-xs hover:bg-neutral-800 transition-all duration-300 ease-in-out flex items-center gap-1.5 shadow-sm"
           >
             <Download className="w-3.5 h-3.5" />
             Download MP4
           </button>
-          <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            Remotion Package Schema Ready
+          <span className="px-3 py-1.5 rounded-2xl bg-white border border-gray-200 text-[#0A0A0A] text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-[#0A0A0A]" />
+            Remotion Package Ready
           </span>
         </div>
       </div>
@@ -62,7 +62,7 @@ export const RemotionPreview: React.FC<{ payload: RemotionPayload }> = ({ payloa
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Real Playable Remotion Player */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="relative aspect-video rounded-2xl border border-gray-200 overflow-hidden shadow-md bg-black">
+          <div className="relative aspect-video rounded-3xl border border-gray-200 overflow-hidden shadow-studio-card bg-black">
             <Player
               component={VideoComposition}
               inputProps={{ payload: safePayload }}
@@ -76,17 +76,17 @@ export const RemotionPreview: React.FC<{ payload: RemotionPayload }> = ({ payloa
           </div>
 
           {/* Visual & B-Roll Recommendation Notes */}
-          <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-blue-600" /> Remotion Scene Visual Description & B-Roll
+          <div className="p-5 rounded-3xl bg-[#F8F9FA] border border-gray-200 shadow-sm space-y-2.5">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#0A0A0A] flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-[#0A0A0A]" /> Remotion Scene Visual Description & B-Roll
             </h4>
-            <p className="text-xs text-gray-700 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+            <p className="text-xs text-gray-700 bg-white p-3 rounded-2xl border border-gray-200 leading-relaxed shadow-sm">
               <span className="text-gray-500 font-semibold">Visual Graphics:</span>{" "}
               {activeScene?.visual_description || "Dynamic motion graphics & visual diagrams"}
             </p>
-            <p className="text-xs text-gray-700 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+            <p className="text-xs text-gray-700 bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
               <span className="text-gray-500 font-semibold">Background Color:</span>{" "}
-              <span className="font-mono text-blue-600 font-bold">{activeScene?.background_color || "#0a0a0c"}</span>
+              <span className="font-mono text-[#0A0A0A] font-bold">{activeScene?.background_color || "#0a0a0c"}</span>
             </p>
           </div>
         </div>
@@ -94,27 +94,33 @@ export const RemotionPreview: React.FC<{ payload: RemotionPayload }> = ({ payloa
         {/* Right 1 Col: Scene Selector List */}
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-            <Play className="w-3.5 h-3.5 text-blue-600" /> Remotion Scenes Timeline
+            <Play className="w-3.5 h-3.5 text-[#0A0A0A]" /> Remotion Scenes Timeline
           </h4>
           <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
             {rawScenes.map((scene, idx) => (
               <button
                 key={idx}
                 onClick={() => setActiveSceneIndex(idx)}
-                className={`w-full text-left p-3 rounded-xl border transition-all ${
+                className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-300 ease-in-out ${
                   activeSceneIndex === idx
-                    ? "bg-blue-50 border-blue-300 text-blue-900 shadow-sm font-medium"
-                    : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300"
+                    ? "bg-[#0A0A0A] border-[#0A0A0A] text-white shadow-md font-medium"
+                    : "bg-[#F8F9FA] border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-blue-700">Scene {scene.scene_number || scene.scene_id || idx + 1}</span>
-                  <span className="text-[10px] font-mono text-gray-400">{scene.duration_seconds || scene.duration || 6}s</span>
+                  <span className={`text-xs font-bold ${activeSceneIndex === idx ? "text-white" : "text-[#0A0A0A]"}`}>
+                    Scene {scene.scene_number || scene.scene_id || idx + 1}
+                  </span>
+                  <span className={`text-[10px] font-mono ${activeSceneIndex === idx ? "text-gray-300" : "text-gray-400"}`}>
+                    {scene.duration_seconds || scene.duration || 6}s
+                  </span>
                 </div>
-                <div className="text-xs font-semibold text-gray-800 mt-1 truncate">
+                <div className={`text-xs font-semibold mt-1 truncate ${activeSceneIndex === idx ? "text-white" : "text-gray-800"}`}>
                   {scene.subtitle_text || scene.on_screen_text || `Scene ${idx + 1}`}
                 </div>
-                <div className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">{scene.narration_text || scene.voiceover_line}</div>
+                <div className={`text-[11px] line-clamp-1 mt-0.5 ${activeSceneIndex === idx ? "text-gray-300" : "text-gray-500"}`}>
+                  {scene.narration_text || scene.voiceover_line}
+                </div>
               </button>
             ))}
           </div>
@@ -122,14 +128,14 @@ export const RemotionPreview: React.FC<{ payload: RemotionPayload }> = ({ payloa
       </div>
 
       {/* Subtitles & Script Tabs */}
-      <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-3">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
-          <MessageSquare className="w-4 h-4 text-blue-600" /> Remotion Narration Script & Subtitles
+      <div className="p-5 rounded-3xl bg-[#F8F9FA] border border-gray-200 shadow-sm space-y-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#0A0A0A] flex items-center gap-1.5">
+          <MessageSquare className="w-4 h-4 text-[#0A0A0A]" /> Remotion Narration Script & Subtitles
         </h4>
-        <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-48 overflow-y-auto space-y-2 font-mono text-xs">
+        <div className="bg-white p-3.5 rounded-2xl border border-gray-200 max-h-48 overflow-y-auto space-y-2 font-mono text-xs shadow-sm">
           {rawScenes.map((scene, i) => (
-            <div key={i} className="flex items-start gap-3 border-b border-gray-200/60 pb-1.5">
-              <span className="text-blue-600 font-semibold shrink-0">
+            <div key={i} className="flex items-start gap-3 border-b border-gray-100 pb-2">
+              <span className="text-[#0A0A0A] font-bold shrink-0">
                 [Scene {scene.scene_number || i + 1} - {scene.duration_seconds || 6}s]
               </span>
               <span className="text-gray-700">{scene.narration_text || scene.voiceover_line}</span>

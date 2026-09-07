@@ -1,6 +1,7 @@
 import json
+import asyncio
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
@@ -9,10 +10,12 @@ class ConnectionManager:
     def __init__(self):
         # Maps client_id -> WebSocket connection
         self.active_connections: Dict[str, WebSocket] = {}
+        self._locks: Dict[str, asyncio.Lock] = {}
 
     async def connect(self, client_id: str, websocket: WebSocket):
         await websocket.accept()
         self.active_connections[client_id] = websocket
+        self._locks[client_id] = asyncio.Lock()
         logger.info(f"WebSocket client connected: {client_id}")
         # Send initial confirmation
         await self.send_json(client_id, {
@@ -24,13 +27,20 @@ class ConnectionManager:
     def disconnect(self, client_id: str):
         if client_id in self.active_connections:
             del self.active_connections[client_id]
-            logger.info(f"WebSocket client disconnected: {client_id}")
+        if client_id in self._locks:
+            del self._locks[client_id]
+        logger.info(f"WebSocket client disconnected: {client_id}")
 
     async def send_json(self, client_id: str, data: Dict[str, Any]):
         if client_id in self.active_connections:
             websocket = self.active_connections[client_id]
+            lock = self._locks.get(client_id)
             try:
-                await websocket.send_text(json.dumps(data))
+                if lock:
+                    async with lock:
+                        await websocket.send_text(json.dumps(data))
+                else:
+                    await websocket.send_text(json.dumps(data))
             except Exception as e:
                 logger.error(f"Error sending WebSocket message to {client_id}: {e}")
                 self.disconnect(client_id)
@@ -52,6 +62,17 @@ class ConnectionManager:
             "type": "spoke_completed",
             "spoke": spoke,
             "result": result
+        }
+        await self.send_json(client_id, payload)
+
+    async def broadcast_stream_chunk(self, client_id: str, spoke: str, chunk: str, job_id: Optional[str] = None):
+        """Helper to push real-time streaming text chunks from Gemini API."""
+        payload = {
+            "type": "stream_chunk",
+            "event": "stream_chunk",
+            "job_id": job_id,
+            "spoke": spoke,
+            "chunk": chunk
         }
         await self.send_json(client_id, payload)
 

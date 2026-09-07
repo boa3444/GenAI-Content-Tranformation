@@ -27,31 +27,31 @@ logger = logging.getLogger(__name__)
 SPOKE_MAPPING = {
     "video": {
         "schema": VideoPackageSchema,
-        "prompt_generator": lambda draft: f"You are a Computer Science Professor. Based strictly on the following highly detailed academic master draft, write a massive multi-scene video script matching VideoPackageSchema. For each scene's narration, you MUST write a comprehensive documentary script containing AT LEAST 400 WORDS PER SCENE. Explain every definition, algorithm, and real-world example in profound, exhaustive detail. Do NOT summarize or shorten anything. ACADEMIC MASTER DRAFT:\n\n{draft}"
+        "prompt_generator": lambda draft: f"You are a Computer Science Professor. Based strictly on the academic master draft inside <source_content>, write a massive multi-scene video script matching VideoPackageSchema. For each scene's narration, you MUST write a comprehensive documentary script containing AT LEAST 400 WORDS PER SCENE. Explain every definition, algorithm, and real-world example in profound, exhaustive detail. Do NOT summarize or shorten anything.\n\n<source_content>\n{draft}\n</source_content>"
     },
     "presentation": {
         "schema": PresentationSchema,
-        "prompt_generator": lambda draft: f"Create a master-class presentation matching PresentationSchema. For each slide's speaker notes, you MUST write at least 500 words of flowing, highly technical lecture text. Write out complete, verbose explanations of every single theory, mechanism, and example from the draft. Do not compress or summarize the source text. ACADEMIC MASTER DRAFT:\n\n{draft}"
+        "prompt_generator": lambda draft: f"Create a master-class presentation matching PresentationSchema. Based strictly on the master draft inside <source_content>, write at least 500 words of flowing, highly technical lecture text for each slide's speaker notes. Write out complete, verbose explanations of every single theory, mechanism, and example from the draft. Do not compress or summarize the source text.\n\n<source_content>\n{draft}\n</source_content>"
     },
     "advisory": {
         "schema": AdvisorySchema,
-        "prompt_generator": lambda draft: f"Generate an exhaustive, textbook-length formal technical advisory document matching AdvisorySchema. You MUST write at least 400 words for the executive summary and at least 600 words for the threat analysis. Detail every structural risk, underlying mechanism, and mitigation blueprint in massive detail. ACADEMIC MASTER DRAFT:\n\n{draft}"
+        "prompt_generator": lambda draft: f"Generate an exhaustive, textbook-length formal technical advisory document matching AdvisorySchema based strictly on the text inside <source_content>. You MUST write at least 400 words for the executive summary and at least 600 words for the threat analysis. Detail every structural risk, underlying mechanism, and mitigation blueprint in massive detail.\n\n<source_content>\n{draft}\n</source_content>"
     },
     "linkedin": {
         "schema": LinkedInSchema,
-        "prompt_generator": lambda draft: f"Draft a massive, deeply informative academic thought leadership post matching LinkedInSchema. You MUST write at least 400 words of flowing text in main_body, teaching the technical parameters, definitions, and metrics from the draft in exhaustive detail. ACADEMIC MASTER DRAFT:\n\n{draft}"
+        "prompt_generator": lambda draft: f"Draft a massive, deeply informative academic thought leadership post matching LinkedInSchema based strictly on the text inside <source_content>. You MUST write at least 400 words of flowing text in main_body, teaching the technical parameters, definitions, and metrics from the draft in exhaustive detail.\n\n<source_content>\n{draft}\n</source_content>"
     },
     "twitter": {
         "schema": TwitterSchema,
-        "prompt_generator": lambda draft: f"Create a comprehensive 7 to 10-tweet educational masterclass thread matching TwitterSchema. Make each tweet in the thread as long, dense, and detailed as possible, explaining technical parameters in exhaustive depth. ACADEMIC MASTER DRAFT:\n\n{draft}"
+        "prompt_generator": lambda draft: f"Create a comprehensive 7 to 10-tweet educational masterclass thread matching TwitterSchema based strictly on the text inside <source_content>. Make each tweet in the thread as long, dense, and detailed as possible, explaining technical parameters in exhaustive depth.\n\n<source_content>\n{draft}\n</source_content>"
     },
     "infographic": {
         "schema": InfographicSchema,
-        "prompt_generator": lambda draft: f"Create an exhaustive infographic blueprint matching InfographicSchema highlighting at least 8 specific, highly detailed data points, metrics, and theoretical frameworks from the draft:\n\n{draft}"
+        "prompt_generator": lambda draft: f"You are strictly an information extractor. Create an infographic blueprint matching InfographicSchema. Your data_points and layout must ONLY contain facts, numbers, and concepts explicitly written in <source_content>. Do NOT mention Antigravity, FAISS, BM25, LLM, Agent, Prompt, or Backend. Do not invent system diagrams about how you process data.\n\n<source_content>\n{draft}\n</source_content>"
     },
     "summary": {
         "schema": ExecutiveSummarySchema,
-        "prompt_generator": lambda draft: f"Write a massive executive briefing matching ExecutiveSummarySchema. You MUST write at least 500 words for the executive abstract, explaining the advanced technical mechanisms and academic frameworks in exhaustive detail. ACADEMIC MASTER DRAFT:\n\n{draft}"
+        "prompt_generator": lambda draft: f"Write a massive executive briefing matching ExecutiveSummarySchema based strictly on the text inside <source_content>. You MUST write at least 500 words for the executive abstract, explaining the advanced technical mechanisms and academic frameworks in exhaustive detail.\n\n<source_content>\n{draft}\n</source_content>"
     }
 }
 
@@ -107,15 +107,17 @@ async def dispatch_hub_and_spoke(
 
     draft_prompt = (
         "You are an elite, highly detailed University Professor. Study the provided source context "
-        "and write an exhaustive, highly technical academic draft. Expand fully on every definition, "
-        "theoretical framework, classification, and real-world example found in the document. "
-        "Do not summarize. Write a comprehensive, long-form master reference guide containing at least "
-        "2,000 words explaining these concepts.\n\nSOURCE CONTEXT:\n\n" + full_context
+        "inside <source_content> and write an exhaustive, highly technical academic draft. Expand fully "
+        "on every definition, theoretical framework, classification, and real-world example found in the "
+        "document. Do not summarize. Write a comprehensive, long-form master reference guide containing "
+        "at least 2,000 words explaining these concepts.\n\n<source_content>\n" + full_context + "\n</source_content>"
     )
 
     academic_master_draft = await gemini_service.generate_text(
         prompt=draft_prompt,
-        system_instruction="You are an elite, highly detailed University Professor and Course Designer."
+        system_instruction="You are an elite, highly detailed University Professor and Course Designer.",
+        client_id=client_id,
+        session_id=session_id
     )
 
     if not academic_master_draft or not academic_master_draft.strip():
@@ -127,43 +129,40 @@ async def dispatch_hub_and_spoke(
         "job_id": session_id,
         "status": "processing",
         "progress": 20,
-        "message": f"Phase 2: Distributing master draft to {total_spokes} structural deliverable spokes..."
+        "message": f"Phase 2: Concurrently processing {total_spokes} structural deliverable spokes..."
     })
 
-    # PHASE 2: Sequential Queue Execution (Structural Parsing Phase)
-    completed_count = 0
-
-    for idx, spoke_name in enumerate(valid_spokes):
+    # PHASE 2: Async Parallel Execution (Concurrent Spoke Generation)
+    async def process_spoke(spoke_name: str) -> Optional[Dict[str, Any]]:
         spoke_config = SPOKE_MAPPING[spoke_name]
-        
-        current_progress = int(20 + ((idx + 1) / total_spokes) * 75)
-        
-        await manager.send_json(client_id, {
-            "event": "status_update",
-            "job_id": session_id,
-            "status": "processing",
-            "progress": current_progress,
-            "message": f"Generating spoke {idx + 1}/{total_spokes}: {spoke_name.upper()}..."
-        })
-        await manager.broadcast_status(
-            client_id,
-            step="spoke_dispatch",
-            progress=current_progress,
-            message=f"Generating spoke {idx + 1}/{total_spokes}: {spoke_name.upper()}..."
-        )
-
-        # Try/Except Block to prevent cascading failures across queue items
         try:
+            await manager.send_json(client_id, {
+                "event": "status_update",
+                "job_id": session_id,
+                "status": "processing",
+                "spoke": spoke_name,
+                "progress": 30,
+                "message": f"Generating spoke: {spoke_name.upper()}..."
+            })
+            await manager.broadcast_status(
+                client_id,
+                step="spoke_dispatch",
+                progress=30,
+                message=f"Generating spoke: {spoke_name.upper()}..."
+            )
+
             prompt = spoke_config["prompt_generator"](academic_master_draft)
             system_instruction = f"User config: {config_dict}. You MUST act as an elite Technical Expert. Use the provided master draft to format rich outputs."
             
             if image_bytes:
                 result_data = await gemini_service.generate_multimodal(
-                    system_instruction, prompt, image_bytes, mime_type, spoke_config["schema"]
+                    system_instruction, prompt, image_bytes, mime_type, spoke_config["schema"],
+                    client_id=client_id, spoke_name=spoke_name, session_id=session_id
                 )
             else:
                 result_data = await gemini_service.generate_structured(
-                    system_instruction, prompt, spoke_config["schema"]
+                    system_instruction, prompt, spoke_config["schema"],
+                    client_id=client_id, spoke_name=spoke_name, session_id=session_id
                 )
             
             if result_data:
@@ -243,7 +242,7 @@ async def dispatch_hub_and_spoke(
                 }
                 await manager.send_json(client_id, payload_msg)
                 await manager.broadcast_spoke_result(client_id, spoke_name, {"spoke": spoke_name, "data": result_data})
-                completed_count += 1
+                return result_data
             else:
                 await manager.send_json(client_id, {
                     "event": "spoke_result",
@@ -252,6 +251,7 @@ async def dispatch_hub_and_spoke(
                     "status": "failed",
                     "error": "Generated payload was empty or invalid."
                 })
+                return None
         except Exception as e:
             logger.error(f"Failed spoke {spoke_name}: {e}")
             await manager.send_json(client_id, {
@@ -261,11 +261,12 @@ async def dispatch_hub_and_spoke(
                 "status": "failed",
                 "error": str(e)
             })
+            return None
 
-        # Explicit 5-second stagger pause before processing the next spoke in the queue
-        if idx < total_spokes - 1:
-            logger.info(f"Pausing 5 seconds before next spoke queue item ({idx + 1}/{total_spokes})...")
-            await asyncio.sleep(5)
+    # Execute all selected spokes concurrently in parallel using asyncio.gather
+    spoke_tasks = [process_spoke(spoke_name) for spoke_name in valid_spokes]
+    results = await asyncio.gather(*spoke_tasks, return_exceptions=True)
+    completed_count = sum(1 for r in results if r and not isinstance(r, Exception))
 
     # Finish Pipeline
     await manager.send_json(client_id, {

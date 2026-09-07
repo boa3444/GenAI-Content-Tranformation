@@ -7,23 +7,32 @@ async def generate_infographic_spoke(
     image_bytes: bytes = None,
     mime_type: str = None
 ) -> Dict[str, Any]:
-    system_instruction = (
-        "You are an expert academic educator and visual information architect. "
-        "Create an infographic blueprint matching InfographicSchema based on the provided text or image. "
-        "Include main_title, data_points (array of key statistics, metrics, facts, and syllabus topics extracted directly from the source), "
-        "and layout_flow_recommendation (detailed structural design specification). "
-        "Do NOT mention the web application, backend pipeline, FAISS, or BM25."
-    )
     
+    # Strict boundary system instruction targeting only source content
+    system_instruction = (
+        "You are strictly an information extractor and visual infographic designer.\n\n"
+        "Your task is to transform the provided source text into an infographic blueprint matching InfographicSchema.\n\n"
+        "🚫 UNBREAKABLE NEGATIVE PROMPT - FORBIDDEN WORDS:\n"
+        "Zero self-reference: Do NOT use, mention, or reference any of the following forbidden words under any circumstances: "
+        "\"Antigravity\", \"FAISS\", \"BM25\", \"LLM\", \"Agent\", \"Prompt\", \"Backend\".\n\n"
+        "⚠️ CRITICAL MANDATE:\n"
+        "You are strictly an information extractor. Your data_points and layout must ONLY contain facts, numbers, and concepts explicitly written in the Source Content Context. Do not invent system diagrams about how you process data.\n\n"
+        "SCHEMA REQUIREMENTS:\n"
+        "1. main_title: Captivating headline summarizing the primary subject from the source content.\n"
+        "2. data_points: Array of key statistics, metrics, facts, and concepts extracted directly from the source content.\n"
+        "3. layout_flow_recommendation: Visual blueprint and structural flow describing how to render these source facts visually."
+    )
+
     prompt = f"""
     Source Content Context:
     {context}
-    
+
     Style: {config.content_style}
-    
-    Extract specific numbers, concepts, quotes, and structural themes from the source content to construct a visual infographic blueprint.
+
+    Extract specific numbers, concepts, quotes, and structural themes strictly from the source content context above to construct a visual infographic blueprint.
+    Do NOT mention Antigravity, FAISS, BM25, LLM, Agent, Prompt, or Backend. Do not invent system diagrams about how you process data.
     """
-    
+
     if image_bytes and mime_type:
         res = await gemini_service.generate_multimodal(
             system_instruction, prompt, image_bytes, mime_type, schema_class=InfographicSchema
@@ -33,13 +42,18 @@ async def generate_infographic_spoke(
             system_instruction, prompt, schema_class=InfographicSchema
         )
 
+    # Normalize response JSON structures to match the frontend expectations
     if res:
         if "main_title" in res and "title" not in res:
             res["title"] = res["main_title"]
         if "data_points" in res and "key_metrics" not in res:
-            res["key_metrics"] = [{"label": f"Key Topic {i+1}", "value": dp, "icon": "book-open"} for i, dp in enumerate(res["data_points"])]
+            res["key_metrics"] = [
+                {"label": f"Key Topic {i+1}", "value": dp, "icon": "book-open"} 
+                for i, dp in enumerate(res["data_points"])
+            ]
         return res
 
+    # Fallback response if API fails
     snippet = context[:150].replace("\n", " ")
 
     return {

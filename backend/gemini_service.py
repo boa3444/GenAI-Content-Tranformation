@@ -11,6 +11,7 @@ import logging
 
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
+from websocket_manager import manager
 
 logger = logging.getLogger(__name__)
 
@@ -60,20 +61,20 @@ VideoSchema = VideoPackageSchema
 class SlideItem(BaseModel):
     slide_number: int = Field(..., description="Sequential slide number")
     title: str = Field(..., description="The title of the core concept being taught (e.g., 'Primary Structural Principles').")
-    main_bullet_points: List[str] = Field(
+    bullet_points: List[str] = Field(
         ...,
-        description="Must contain at least 4 to 6 content-dense bullet points. Each bullet point MUST be a complete, detailed 2-line sentence explaining mechanisms, definitions, and applications, rather than short fragments."
+        description="Maximum 3 short, concise bullet points per slide so slides do not get overcrowded."
     )
-    detailed_speaker_notes: str = Field(
+    speaker_notes: str = Field(
         ...,
-        description="MANDATORY: Write a massive, highly detailed university lecture script. MUST BE A MINIMUM OF 500 WORDS PER SLIDE. Do not use bullet points here; write flowing, verbose paragraphs explaining every nuance, theory, and example from the text."
+        description="Detailed script that the presenter reads to explain the slide's bullet points."
     )
 
 class PresentationSchema(BaseModel):
     hidden_academic_analysis: str = Field(..., description="MANDATORY: Before generating the final output, write a 150-word detailed academic analysis of the source text here. Identify the core concepts, methodologies, and technical terms you will expand upon. Do not skip this.")
     title: str = Field(..., description="Master presentation deck title teaching the uploaded source content")
     presentation_theme: str = Field(..., description="Visual aesthetic and theme description")
-    slides: List[SlideItem] = Field(..., description="Complete multi-slide deck structure teaching core concepts directly")
+    slides: List[SlideItem] = Field(..., description="An array containing EXACTLY 5 to 7 slide objects. MUST NOT be less than 5.")
 
 class AdvisorySchema(BaseModel):
     hidden_academic_analysis: str = Field(..., description="MANDATORY: Before generating the final output, write a 150-word detailed academic analysis of the source text here. Identify the core concepts, methodologies, and technical terms you will expand upon. Do not skip this.")
@@ -110,18 +111,25 @@ class ExecutiveSummarySchema(BaseModel):
     strategic_implications: List[str] = Field(..., description="Deep operational and technical implications.")
     recommended_next_steps: List[str] = Field(..., description="Clear strategic directives and next steps.")
 
-# --- Generic Professor System Instruction ---
-PROFESSOR_SYSTEM_INSTRUCTION = (
-    "You are an elite, highly detailed University Professor, Course Designer, and Technical Content Creator. "
-    "Your mission is to transform the provided source content into a rich, detailed, and educational deliverable for students and professionals. "
-    "You MUST avoid generic summaries, high-level overviews, or boilerplate padding. Treat every single piece of information, sub-topic, and technical keyword in the source text as critical.\n\n"
-    "CRITICAL DIRECTIVE: You are strictly penalized for brevity. You MUST generate extremely lengthy, verbose, and exhaustive content. Every text field you populate MUST read like a detailed chapter of a textbook. Expand on every single technical term, provide exhaustive background context, and over-explain the methodologies. NEVER summarize.\n\n"
-    "Core Instructions:\n"
-    "- Assume the Role: Act as an expert delivering a rigorous masterclass.\n"
-    "- Synthesize, Don't Describe: Do not say 'this document covers...'. Instead, teach the concepts directly based strictly on the uploaded source content.\n"
-    "- Exhaustive Detail: Expand fully on underlying mechanics, classifications, real-world examples, and academic frameworks. Generate exhaustive, content-rich, and professionally-refined text.\n"
-    "- Use Specifics: Explicitly use the examples, nomenclature, and data points mentioned in the uploaded source text.\n"
-)
+# --- Production-Ready System Prompt ---
+SYSTEM_PROMPT = f"""
+[SYSTEM DIRECTIVE: STRICT DATA FORMATTING ENGINE]
+You are a deterministic, production-grade data-formatting function operating within an automated content engine.
+Your SOLE purpose is to process input payloads and produce rich, engaging, and highly structured technical deliverables.
+
+[CRITICAL OUTPUT CONSTRAINTS]
+1. ZERO CONVERSATIONAL FILLER: Strictly FORBIDDEN from generating preambles, introductory statements ("Here is...", "Sure!"), conversational fluff, concluding remarks, or meta-commentary.
+2. STRICT DATA-FORMATTING MODE: Act purely as a data-formatting function. Return ONLY the formatted deliverable or valid structured JSON. Any conversational text outside the required payload is a critical protocol violation.
+3. NO METADATA REFLECTION: Never mention prompt rules, schemas, instructions, checklists, or system prompt directives in your output text.
+
+[STRUCTURAL & ENGAGEMENT MANDATES]
+1. HIERARCHICAL MARKDOWN FORMATTING: Use H2 (##) and H3 (###) headers logically to structure content sections.
+2. KEYWORD EMPHASIS: Bold (**term**) all critical domain nomenclature, technical definitions, key algorithms, and quantitative metrics.
+3. LOGICAL BULLET POINTS: Use clear, content-dense bullet points for structural breakdowns, ensuring complete analytical depth in every point.
+4. EXHAUSTIVE RICHNESS & RIGOR: Maintain textbook-level academic rigor, providing long-form, comprehensive explanations without summarizing or truncating data.
+"""
+
+PROFESSOR_SYSTEM_INSTRUCTION = SYSTEM_PROMPT
 
 SELF_CORRECTION_INSTRUCTION = (
     "After generating the content, review your own output. "
@@ -133,11 +141,55 @@ class GeminiService:
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY")
         self.client = None
+        self._context_cache_map: Dict[str, str] = {}
         if HAS_GENAI_SDK and self.api_key:
             try:
                 self.client = genai.Client(api_key=self.api_key)
             except Exception as e:
                 logger.error(f"Failed to initialize GenAI client: {e}")
+
+    def get_or_create_context_cache(self, text: str) -> Optional[str]:
+        """
+        Implements Google Context Caching for any content payload larger than 32k tokens.
+        Prevents Gemini from re-analyzing the same content on repeated clicks.
+        """
+        if not self.client or not text:
+            return None
+
+        # 1 token is approx 4 characters (~32k tokens = 128k characters)
+        estimated_tokens = len(text) // 4
+        if estimated_tokens < 32000:
+            return None
+
+        import hashlib
+        content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+        if content_hash in self._context_cache_map:
+            cached_name = self._context_cache_map[content_hash]
+            logger.info(f"Reusing existing Gemini Context Cache (~{estimated_tokens} tokens): {cached_name}")
+            return cached_name
+
+        try:
+            cached_content = self.client.caches.create(
+                model="gemini-3.6-flash",
+                config=types.CreateCachedContentConfig(
+                    contents=[
+                        types.Content(
+                            role="user",
+                            parts=[types.Part.from_text(text=text)]
+                        )
+                    ],
+                    display_name=f"cache_{content_hash[:10]}",
+                    ttl="3600s"
+                )
+            )
+            cached_name = cached_content.name
+            self._context_cache_map[content_hash] = cached_name
+            logger.info(f"Created new Gemini Context Cache for payload (~{estimated_tokens} tokens): {cached_name}")
+            return cached_name
+        except Exception as cache_err:
+            logger.warning(f"Gemini Context Cache creation skipped/failed ({cache_err}). Continuing without cache.")
+            return None
 
     def _attempt_json_repair_or_fallback(self, response_text: str, schema_class: type = None) -> Dict[str, Any]:
         """Attempts to repair truncated JSON, or returns a safe schema fallback dictionary."""
@@ -246,13 +298,12 @@ class GeminiService:
                     {
                         "slide_number": 1,
                         "title": "Fundamental Concepts & Principles",
-                        "main_bullet_points": [
+                        "bullet_points": [
                             "Detailed overview of primary technical mechanisms and theoretical foundations.",
                             "Analysis of core definitions, structural frameworks, and operational protocols.",
-                            "Key terminology, performance considerations, and practical applications.",
-                            "Summary of prerequisite knowledge and sequential learning objectives."
+                            "Key terminology, performance considerations, and practical applications."
                         ],
-                        "detailed_speaker_notes": "Welcome to today's lecture. In this section, we examine the primary structural principles..."
+                        "speaker_notes": "Welcome to today's lecture. In this section, we examine the primary structural principles..."
                     }
                 ]
             }
@@ -293,16 +344,14 @@ class GeminiService:
             }
         elif schema_class == InfographicSchema or schema_name == "InfographicSchema":
             return {
-                "main_title": "Technical Blueprint & Key Performance Metrics",
+                "main_title": "Source Content Infographic & Key Findings",
                 "data_points": [
-                    "Parameter 1: 99.9% uptime target across distributed infrastructure.",
-                    "Parameter 2: Modular execution pipeline ensuring low-latency data processing.",
-                    "Parameter 3: Strict JSON schema validation eliminating downstream parsing errors.",
-                    "Parameter 4: Automated memory collection & session cleansing after every transformation.",
-                    "Parameter 5: High-throughput background processing supporting concurrent dispatch.",
-                    "Parameter 6: Comprehensive RAGAS quality evaluation scoring generated deliverables."
+                    "Key Metric 1: Core foundational principles and conceptual frameworks from source text.",
+                    "Key Metric 2: Primary operational benchmarks and system definitions.",
+                    "Key Metric 3: Strategic findings and practical implementation guidelines.",
+                    "Key Metric 4: Key performance indicators and topic mastery milestones."
                 ],
-                "layout_flow_recommendation": "3-tier vertical layout with top header, middle 2x3 grid, and bottom summary flow."
+                "layout_flow_recommendation": "3-tier vertical layout with top header banner, central metric grid, and bottom summary flow."
             }
         elif schema_class == ExecutiveSummarySchema or schema_name == "ExecutiveSummarySchema":
             return {
@@ -327,44 +376,70 @@ class GeminiService:
             "content": "Analysis completed matching required schema specifications."
         }
 
-    async def generate_structured(self, system_instruction: str, prompt: str, schema_class: type = None) -> Dict[str, Any]:
-        """Calls Gemini API requesting JSON output matching the target schema with max_output_tokens=8192."""
+    async def generate_structured(
+        self,
+        system_instruction: str,
+        prompt: str,
+        schema_class: type = None,
+        client_id: Optional[str] = None,
+        spoke_name: Optional[str] = None,
+        session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Calls Gemini API requesting JSON output matching the target schema with streaming & max_output_tokens=8192."""
         if not self.client:
             logger.info("GenAI client unavailable. Returning fallback structure.")
             return self._get_fallback_for_schema(schema_class)
 
         full_system_instruction = f"{PROFESSOR_SYSTEM_INSTRUCTION}\n\n{system_instruction}"
         full_prompt = f"{prompt}\n\n{SELF_CORRECTION_INSTRUCTION}"
+        cached_name = self.get_or_create_context_cache(prompt)
 
         for attempt in range(3):
             try:
                 config = types.GenerateContentConfig(
                     system_instruction=full_system_instruction,
                     response_mime_type="application/json",
-                    temperature=0.3, # Low temp for factual precision
+                    temperature=0.7,
                     max_output_tokens=8192,
                 )
                 if schema_class:
                     config.response_schema = schema_class
+                if cached_name:
+                    config.cached_content = cached_name
 
-                # Upgraded model for deep reasoning and massive context handling
-                response = self.client.models.generate_content(
-                    model="gemini-3.6-flash", 
-                    contents=full_prompt,
-                    config=config
-                )
+                full_text = ""
                 try:
-                    parsed = json.loads(response.text)
+                    response_stream = await self.client.aio.models.generate_content_stream(
+                        model="gemini-3.6-flash",
+                        contents=full_prompt,
+                        config=config
+                    )
+                    async for chunk in response_stream:
+                        if chunk.text:
+                            full_text += chunk.text
+                            if client_id:
+                                await manager.broadcast_stream_chunk(client_id, spoke_name or "structured", chunk.text, session_id)
+                except Exception as stream_err:
+                    logger.warning(f"Async streaming error ({stream_err}), falling back to generate_content.")
+                    response = self.client.models.generate_content(
+                        model="gemini-3.6-flash",
+                        contents=full_prompt,
+                        config=config
+                    )
+                    full_text = response.text or ""
+
+                try:
+                    parsed = json.loads(full_text)
                     return parsed
                 except (json.JSONDecodeError, Exception) as parse_err:
                     logger.error(f"Gemini structured JSON parsing error: {parse_err}. Attempting repair/fallback.")
-                    return self._attempt_json_repair_or_fallback(getattr(response, "text", ""), schema_class)
+                    return self._attempt_json_repair_or_fallback(full_text, schema_class)
             except Exception as e:
                 err_str = str(e).lower()
                 is_rate_limit = "429" in err_str or "exhausted" in err_str or "rate" in err_str or "resource_exhausted" in err_str
                 if is_rate_limit and attempt < 2:
-                    logger.warning(f"Gemini API rate limit 429 encountered (attempt {attempt + 1}/3). Waiting 20s before retry...")
-                    await asyncio.sleep(20)
+                    logger.warning(f"Gemini API rate limit 429 encountered (attempt {attempt + 1}/3). Waiting 2s before retry...")
+                    await asyncio.sleep(2)
                     continue
                 logger.error(f"Gemini API generation error (attempt {attempt + 1}/3): {e}")
                 return self._get_fallback_for_schema(schema_class)
@@ -375,9 +450,12 @@ class GeminiService:
         prompt: str,
         image_bytes: bytes,
         mime_type: str,
-        schema_class: type = None
+        schema_class: type = None,
+        client_id: Optional[str] = None,
+        spoke_name: Optional[str] = None,
+        session_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Directly sends raw image bytes + prompt to Gemini vision model."""
+        """Directly sends raw image bytes + prompt to Gemini vision model with streaming chunks."""
         if not self.client:
             logger.info("GenAI client unavailable. Returning fallback structure.")
             return self._get_fallback_for_schema(schema_class)
@@ -396,63 +474,103 @@ class GeminiService:
                 config = types.GenerateContentConfig(
                     system_instruction=full_system_instruction,
                     response_mime_type="application/json",
-                    temperature=0.3,
+                    temperature=0.7,
                     max_output_tokens=8192,
                 )
                 if schema_class:
                     config.response_schema = schema_class
 
-                # Upgraded model
-                response = self.client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=contents,
-                    config=config
-                )
+                full_text = ""
                 try:
-                    parsed = json.loads(response.text)
+                    response_stream = await self.client.aio.models.generate_content_stream(
+                        model="gemini-3.6-flash",
+                        contents=contents,
+                        config=config
+                    )
+                    async for chunk in response_stream:
+                        if chunk.text:
+                            full_text += chunk.text
+                            if client_id:
+                                await manager.broadcast_stream_chunk(client_id, spoke_name or "multimodal", chunk.text, session_id)
+                except Exception as stream_err:
+                    logger.warning(f"Async multimodal streaming error ({stream_err}), falling back to generate_content.")
+                    response = self.client.models.generate_content(
+                        model="gemini-3.6-flash",
+                        contents=contents,
+                        config=config
+                    )
+                    full_text = response.text or ""
+
+                try:
+                    parsed = json.loads(full_text)
                     return parsed
                 except (json.JSONDecodeError, Exception) as parse_err:
                     logger.error(f"Gemini multimodal JSON parsing error: {parse_err}. Attempting repair/fallback.")
-                    return self._attempt_json_repair_or_fallback(getattr(response, "text", ""), schema_class)
+                    return self._attempt_json_repair_or_fallback(full_text, schema_class)
             except Exception as e:
                 err_str = str(e).lower()
                 is_rate_limit = "429" in err_str or "exhausted" in err_str or "rate" in err_str or "resource_exhausted" in err_str
                 if is_rate_limit and attempt < 2:
-                    logger.warning(f"Gemini Multimodal API rate limit 429 encountered (attempt {attempt + 1}/3). Waiting 20s before retry...")
-                    await asyncio.sleep(20)
+                    logger.warning(f"Gemini Multimodal API rate limit 429 encountered (attempt {attempt + 1}/3). Waiting 2s before retry...")
+                    await asyncio.sleep(2)
                     continue
                 logger.error(f"Gemini multimodal API generation error (attempt {attempt + 1}/3): {e}")
                 return self._get_fallback_for_schema(schema_class)
 
-    async def generate_text(self, prompt: str, system_instruction: str = "") -> str:
-        """Lightweight unstructured text call to Gemini 3.6 Flash for Phase 1 Master Draft generation."""
+    async def generate_text(
+        self,
+        prompt: str,
+        system_instruction: str = "",
+        client_id: Optional[str] = None,
+        session_id: Optional[str] = None
+    ) -> str:
+        """Lightweight unstructured text call to Gemini Flash with streaming chunks over WebSocket."""
         if not self.client:
             logger.info("GenAI client unavailable. Returning raw prompt.")
             return prompt
 
         full_system_instruction = f"{PROFESSOR_SYSTEM_INSTRUCTION}\n\n{system_instruction}" if system_instruction else PROFESSOR_SYSTEM_INSTRUCTION
+        cached_name = self.get_or_create_context_cache(prompt)
 
         for attempt in range(3):
             try:
                 config = types.GenerateContentConfig(
                     system_instruction=full_system_instruction,
-                    temperature=0.4,
+                    temperature=0.7,
                     max_output_tokens=8192,
                 )
-                response = self.client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=prompt,
-                    config=config
-                )
-                if response and response.text:
-                    return response.text
+                if cached_name:
+                    config.cached_content = cached_name
+                full_text = ""
+                try:
+                    response_stream = await self.client.aio.models.generate_content_stream(
+                        model="gemini-3.6-flash",
+                        contents=prompt,
+                        config=config
+                    )
+                    async for chunk in response_stream:
+                        if chunk.text:
+                            full_text += chunk.text
+                            if client_id:
+                                await manager.broadcast_stream_chunk(client_id, "master_draft", chunk.text, session_id)
+                except Exception as stream_err:
+                    logger.warning(f"Async generate_text streaming error ({stream_err}), falling back to generate_content.")
+                    response = self.client.models.generate_content(
+                        model="gemini-3.6-flash",
+                        contents=prompt,
+                        config=config
+                    )
+                    full_text = response.text or ""
+
+                if full_text:
+                    return full_text
                 return prompt
             except Exception as e:
                 err_str = str(e).lower()
                 is_rate_limit = "429" in err_str or "exhausted" in err_str or "rate" in err_str or "resource_exhausted" in err_str
                 if is_rate_limit and attempt < 2:
-                    logger.warning(f"Gemini generate_text rate limit 429 encountered (attempt {attempt + 1}/3). Waiting 20s before retry...")
-                    await asyncio.sleep(20)
+                    logger.warning(f"Gemini generate_text rate limit 429 encountered (attempt {attempt + 1}/3). Waiting 2s before retry...")
+                    await asyncio.sleep(2)
                     continue
                 logger.error(f"Gemini generate_text API error (attempt {attempt + 1}/3): {e}")
                 return prompt

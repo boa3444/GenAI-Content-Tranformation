@@ -56,18 +56,18 @@ export const ShareIntents: React.FC<ShareIntentsProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+    <div className="flex flex-wrap items-center gap-2.5 mt-4 pt-4 border-t border-gray-200">
       <button
         onClick={handleCopy}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+        className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-[#0A0A0A] text-white font-medium text-xs hover:bg-neutral-800 transition-all duration-300 ease-in-out shadow-sm"
       >
-        {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-blue-600" />}
+        {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-white" />}
         {copied ? "Copied to Clipboard" : "Copy Content"}
       </button>
 
       <button
         onClick={handleTwitterShare}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-50 border border-sky-200 text-xs font-medium text-sky-700 hover:bg-sky-100 transition-all shadow-sm"
+        className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white border border-gray-200 text-[#0A0A0A] text-xs font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-300 ease-in-out shadow-sm"
       >
         <Twitter className="w-3.5 h-3.5 text-sky-500" />
         Post to X / Twitter
@@ -75,7 +75,7 @@ export const ShareIntents: React.FC<ShareIntentsProps> = ({
 
       <button
         onClick={handleLinkedInShare}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-all shadow-sm"
+        className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white border border-gray-200 text-[#0A0A0A] text-xs font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-300 ease-in-out shadow-sm"
       >
         <Linkedin className="w-3.5 h-3.5 text-blue-600" />
         Share on LinkedIn
@@ -84,9 +84,9 @@ export const ShareIntents: React.FC<ShareIntentsProps> = ({
       {typeof navigator !== "undefined" && "share" in navigator && (
         <button
           onClick={handleNativeShare}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white border border-gray-200 text-[#0A0A0A] text-xs font-medium hover:bg-gray-50 transition-all duration-300 ease-in-out shadow-sm"
         >
-          <Share2 className="w-3.5 h-3.5 text-indigo-600" />
+          <Share2 className="w-3.5 h-3.5 text-gray-700" />
           Native Share
         </button>
       )}

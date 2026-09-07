@@ -9,21 +9,22 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: "#f9fafb",
-        surface: "#ffffff",
-        "surface-border": "#e5e7eb",
-        brand: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
+        background: "#FFFFFF",
+        surface: "#F8F9FA",
+        "surface-border": "#E5E7EB",
+        charcoal: {
+          DEFAULT: "#0A0A0A",
+          muted: "#404040",
+          subtle: "#737373",
         }
       },
+      borderRadius: {
+        '3xl': '24px',
+        '2xl': '18px',
+      },
       boxShadow: {
-        'chat': '0 4px 20px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04)',
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)',
+        'studio-diffused': '0 25px 50px -12px rgba(0, 0, 0, 0.06), 0 0 1px 1px rgba(0, 0, 0, 0.04)',
+        'studio-card': '0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 0 1px 1px rgba(0, 0, 0, 0.03)',
       }
     },
   },
