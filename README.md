@@ -32,3 +32,34 @@ An intelligent Python-based engine designed to process, restructure, and transfo
 ├── .gitignore          # Prevents pushing sensitive/unnecessary files
 ├── requirements.txt    # Project dependencies
 └── README.md           # Project documentation
+
+```
+# ⚙️ Quick Start & Installation
+Follow these steps to set up and run the project locally on your machine.
+
+## 1. Clone the Repository
+```bash
+git clone https://github.com/your-username/content-transformation-engine.git
+cd content-transformation-engine
+```
+## 2. Set Up a Virtual Environment
+```bash
+python -m venv venv
+```
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+## 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+## 4. Configure Your API Key
+Create a .env file in the root directory:
+```bash
+touch .env
+```
+Open .env and add your Gemini API Key:
+env
+GEMINI_API_KEY=your_actual_api_key_here
+
