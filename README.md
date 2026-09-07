@@ -1,10 +1,10 @@
-# 🚀 AI-Powered Content Transformation Engine
+# 👾 AI-Powered Content Transformation Engine
 
 An intelligent Python-based engine designed to process, restructure, and transform complex or unstructured text documents into clean, tailored formats using Large Language Models (LLMs) and custom Natural Language Processing (NLP) workflows.
 
 ---
 
-## 📌 Key Features
+## .✦ ݁˖ Key Features
 
 * **Smart Text Summarization:** Condenses long-form articles, reports, or logs into structured bullet points or executive summaries.
 * **Format Conversion:** Effortlessly converts unstructured text into clean Markdown, JSON, or CSV formats.
@@ -13,7 +13,7 @@ An intelligent Python-based engine designed to process, restructure, and transfo
 
 ---
 
-## 🛠️ Tech Stack & Libraries
+## 💻 Tech Stack & Libraries
 
 * **Language:** Python 3.10+
 * **AI/LLM Integration:** Google Gemini API (via `google-generativeai`)
@@ -21,7 +21,7 @@ An intelligent Python-based engine designed to process, restructure, and transfo
 
 ---
 
-## 📁 Repository Structure
+## ╰┈➤ Repository Structure
 
 ```text
 ├── models/             # Custom ML models and weight files
@@ -34,7 +34,7 @@ An intelligent Python-based engine designed to process, restructure, and transfo
 └── README.md           # Project documentation
 
 ```
-# ⚙️ Quick Start & Installation
+# 👨🏻‍💻 Quick Start & Installation
 Follow these steps to set up and run the project locally on your machine.
 
 ## 1. Clone the Repository
